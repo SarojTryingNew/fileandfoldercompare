@@ -1,0 +1,11 @@
+{
+  "name": "folder-browser",
+  "version": "1.0.0",
+  "description": "React/Node.js application to browse folders on your local machine",
+  "scripts": {
+    "install-all": "cd server && npm install && cd ../client && npm install",
+    "start-server": "cd server && npm start",
+    "start-client": "cd client && npm start",
+    "dev-server": "cd server && npm run dev"
+  }
+}

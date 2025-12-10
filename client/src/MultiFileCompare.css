@@ -1,0 +1,32 @@
+@import './MultiFolderCompare.css';
+
+.multi-file-compare {
+  width: 100%;
+}
+
+.file-name-badge {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-name-cell {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+}
+
+.extension-cell {
+  text-align: center;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.date-cell {
+  color: #666;
+  font-size: 13px;
+  white-space: nowrap;
+}
