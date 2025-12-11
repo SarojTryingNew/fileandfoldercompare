@@ -30,6 +30,12 @@ A comprehensive React/Node.js application for browsing, analyzing, and comparing
   - **Full Search**: Groups all folders with matching names (case-insensitive)
 - View duplicate groups with location details
 - Statistics: total duplicates found, total folders analyzed
+- **Multi-Delete Functionality:**
+  - Select individual folders with checkboxes
+  - Select all folders in a group with group checkbox
+  - Delete multiple folders in batch with confirmation
+  - Clear selection button for quick deselection
+  - Real-time selection count display
 
 ### 🔄 Multi-Folder Compare
 - Compare multiple folder paths simultaneously
@@ -37,6 +43,11 @@ A comprehensive React/Node.js application for browsing, analyzing, and comparing
 - Same search modes as Duplicate Folder Finder
 - Source path tracking for each duplicate
 - Cross-directory duplicate analysis
+- **Multi-Delete Functionality:**
+  - Select multiple folders across all source paths
+  - Batch delete with confirmation dialog
+  - Selection tracking across different path sources
+  - Highlighted selection rows for visual feedback
 
 ### 📄 File Browser
 - List all files recursively from any directory
@@ -56,6 +67,13 @@ A comprehensive React/Node.js application for browsing, analyzing, and comparing
   - **Full Search**: Groups all files with matching names
 - Detailed file information (size, extension, modification date)
 - Duplicate count and location tracking
+- **Multi-Delete Functionality:**
+  - Select individual files with checkboxes in both table and list views
+  - Select all files in a group with group checkbox
+  - Delete multiple files in batch with confirmation
+  - Clear selection button for quick deselection
+  - Selection indicator with count display
+  - Highlighted rows showing selected files
 
 ### 🔀 Multi-File Compare
 - Compare files across multiple folder paths
@@ -63,6 +81,12 @@ A comprehensive React/Node.js application for browsing, analyzing, and comparing
 - Same search modes as Duplicate File Finder
 - Source path tracking
 - Comprehensive duplicate analysis across directories
+- **Multi-Delete Functionality:**
+  - Select multiple files from different source paths
+  - Batch delete with confirmation dialog
+  - Selection tracking across source folders
+  - Row highlighting for selected items
+  - Selection count display
 
 ### 🎨 UI/UX Features
 - Modern, responsive design with gradient backgrounds
@@ -278,6 +302,36 @@ npm run dev
 3. Click "Compare Files"
 4. Analyze duplicate files across different directories
 
+### Multi-Delete Feature (Available in All Compare Tools)
+
+**Available in:**
+- Duplicate Folder Finder
+- Multi-Folder Compare
+- Duplicate File Finder
+- Multi-File Compare
+
+**How to Use Multi-Delete:**
+
+1. **Select Items:**
+   - Click individual checkboxes next to files/folders to select them
+   - Click the group checkbox to select all items in that duplicate group
+   - Multiple selection works across all groups
+
+2. **Delete Multiple Items:**
+   - Once items are selected, a selection toolbar appears at the top
+   - Shows count of selected items
+   - Click "🗑 Delete Selected" button
+   - Confirm the deletion in the dialog box
+
+3. **Clear Selection:**
+   - Click "Clear Selection" button in the toolbar
+   - Removes all selections without deleting
+
+4. **Visual Feedback:**
+   - Selected rows are highlighted with light blue background
+   - Selection count is displayed in real-time
+   - Individual delete buttons still available for single item deletion
+
 ## API Endpoints
 
 The backend server exposes the following REST API endpoints:
@@ -474,6 +528,52 @@ Get image preview (for supported image formats).
 **Query Parameters:**
 
 - `path`: File path to the image
+
+### File Management Operations
+
+#### `POST /api/delete-file`
+
+Delete a single file from the file system.
+
+**Request:**
+
+```json
+{
+  "path": "C:\\Users\\YourName\\Documents\\file.txt"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "File deleted successfully",
+  "deletedPath": "C:\\Users\\YourName\\Documents\\file.txt"
+}
+```
+
+#### `POST /api/delete-folder`
+
+Delete a folder and all its contents from the file system.
+
+**Request:**
+
+```json
+{
+  "path": "C:\\Users\\YourName\\Documents\\backup"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Folder deleted successfully",
+  "deletedPath": "C:\\Users\\YourName\\Documents\\backup"
+}
+```
 
 ## Technologies Used
 
@@ -744,11 +844,12 @@ Contributions are welcome! Please follow these guidelines:
 
 Potential features for future development:
 
+- [x] Batch file operations (delete) - **COMPLETED v1.1.0**
 - [ ] File content comparison (hash-based)
 - [ ] Folder synchronization
 - [ ] Export results to CSV/Excel
 - [ ] Advanced filtering options
-- [ ] Batch file operations (move/delete)
+- [ ] Move files/folders functionality
 - [ ] File preview for more formats (PDF, videos)
 - [ ] Search within file contents
 - [ ] Drag-and-drop folder selection
@@ -770,7 +871,32 @@ For issues, questions, or contributions:
 
 ## Changelog
 
-### Version 1.0.0 (Current)
+### Version 1.1.0 (Current - December 11, 2025)
+
+**New Features:**
+- ✨ **Multi-Delete Functionality** added to all compare features
+  - Batch deletion of files and folders
+  - Individual and group selection with checkboxes
+  - Multi-select checkboxes in both table and list views
+  - Group select/deselect all items in a duplicate group
+  - Selection count display with real-time updates
+  - Highlighted rows for visual selection feedback
+  - Clear selection button for quick deselection
+  - Confirmation dialog before batch deletion
+  - Error handling with individual error reporting during batch operations
+  
+**Affected Components:**
+- DuplicateFileFinder.js - Multi-delete for files with duplicate names
+- DuplicateFinder.js - Multi-delete for folders with duplicate names
+- MultiFileCompare.js - Multi-delete for compared files across paths
+- MultiFolderCompare.js - Multi-delete for compared folders across paths
+
+**Backend Enhancements:**
+- `/api/delete-file` endpoint for file deletion
+- `/api/delete-folder` endpoint for folder deletion
+- Error handling and success responses
+
+### Version 1.0.0
 
 - Initial release
 - Folder browser with multiple view modes

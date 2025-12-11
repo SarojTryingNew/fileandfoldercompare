@@ -38,6 +38,81 @@ function DuplicateFileFinder() {
   const [searchMode, setSearchMode] = useState('perfect');
   const [showThumbnails, setShowThumbnails] = useState(false);
   const [sortBy, setSortBy] = useState('name');
+  const [selectedLocations, setSelectedLocations] = useState(new Set());
+
+  const toggleLocationSelection = (filePath) => {
+    const newSelected = new Set(selectedLocations);
+    if (newSelected.has(filePath)) {
+      newSelected.delete(filePath);
+    } else {
+      newSelected.add(filePath);
+    }
+    setSelectedLocations(newSelected);
+  };
+
+  const toggleSelectAllInGroup = (group) => {
+    const groupPaths = group.locations.map(l => typeof l === 'string' ? l : l.path);
+    const allSelected = groupPaths.every(path => selectedLocations.has(path));
+    const newSelected = new Set(selectedLocations);
+    
+    groupPaths.forEach(path => {
+      if (allSelected) {
+        newSelected.delete(path);
+      } else {
+        newSelected.add(path);
+      }
+    });
+    setSelectedLocations(newSelected);
+  };
+
+  const handleMultiDelete = async () => {
+    if (selectedLocations.size === 0) {
+      alert('Please select files to delete');
+      return;
+    }
+    
+    const confirmMsg = `Delete ${selectedLocations.size} selected file(s)?`;
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return;
+
+    try {
+      const pathsToDelete = Array.from(selectedLocations);
+      const errors = [];
+
+      for (const filePath of pathsToDelete) {
+        try {
+          const res = await fetch('http://localhost:3001/api/delete-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: filePath }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            errors.push(`${filePath}: ${data.error || 'Failed to delete'}`);
+          }
+        } catch (err) {
+          errors.push(`${filePath}: ${err.message}`);
+        }
+      }
+
+      setDuplicates(prev => {
+        const updated = prev
+          .map(g => ({ ...g, locations: g.locations.filter(l => !selectedLocations.has(typeof l === 'string' ? l : l.path)) }))
+          .filter(g => g.locations && g.locations.length > 1);
+        return updated;
+      });
+      setSelectedLocations(new Set());
+
+      if (errors.length > 0) {
+        alert(`Errors during deletion:\n${errors.join('\n')}`);
+      } else {
+        alert(`Successfully deleted ${pathsToDelete.length} file(s)`);
+      }
+    } catch (err) {
+      alert('Delete operation failed: ' + err.message);
+    }
+  };
 
   const toggleGroup = (index) => {
     const newExpanded = new Set(expandedGroups);
@@ -102,6 +177,33 @@ function DuplicateFileFinder() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteFileLocation = async (filePath) => {
+    const ok = window.confirm(`Delete file? ${filePath}`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch('http://localhost:3001/api/delete-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete file');
+
+      setDuplicates(prev => {
+        const updated = prev
+          .map(g => ({ ...g, locations: g.locations.filter(l => (typeof l === 'string' ? l : l.path) !== filePath) }))
+          .filter(g => g.locations && g.locations.length > 1);
+        return updated;
+      });
+
+      setTotalDuplicates(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
     }
   };
 
@@ -184,6 +286,17 @@ function DuplicateFileFinder() {
           </div>
 
           <div className="results-controls">
+            {selectedLocations.size > 0 && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '10px' }}>
+                <span style={{ fontWeight: 'bold' }}>{selectedLocations.size} file(s) selected</span>
+                <button type="button" className="delete-btn" onClick={handleMultiDelete}>
+                  🗑 Delete Selected
+                </button>
+                <button type="button" className="control-btn" onClick={() => setSelectedLocations(new Set())}>
+                  Clear Selection
+                </button>
+              </div>
+            )}
             <div className="view-selector">
               <button 
                 type="button" 
@@ -234,22 +347,35 @@ function DuplicateFileFinder() {
               <table className="files-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>Select</th>
                     <th>File Name</th>
                     <th>Extension</th>
                     <th>Size</th>
                     <th>Modified Date</th>
                     <th>Path</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {getSortedDuplicates().map((group) => 
-                    group.locations.map((location, locIndex) => (
-                      <tr key={`${group.name}-${locIndex}`}>
+                    group.locations.map((location, locIndex) => {
+                      const filePath = typeof location === 'string' ? location : location.path;
+                      const isSelected = selectedLocations.has(filePath);
+                      return (
+                      <tr key={`${group.name}-${locIndex}`} style={{ backgroundColor: isSelected ? '#e3f2fd' : 'transparent' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleLocationSelection(filePath)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
                         <td className="file-name-cell">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             {showThumbnails && isImageFile(group.name) ? (
                               <img 
-                                src={getImagePreviewUrl(typeof location === 'string' ? location : location.path)} 
+                                src={getImagePreviewUrl(filePath)} 
                                 alt="preview" 
                                 style={{ 
                                   width: '50px', 
@@ -269,9 +395,13 @@ function DuplicateFileFinder() {
                         <td className="extension-cell">{location.extension || 'N/A'}</td>
                         <td className="stats-cell">{location.size !== undefined ? formatSize(location.size) : 'N/A'}</td>
                         <td className="date-cell">{location.modifiedDate ? formatDate(location.modifiedDate) : 'N/A'}</td>
-                        <td className="path-cell">{typeof location === 'string' ? location : location.path}</td>
+                        <td className="path-cell">{filePath}</td>
+                        <td className="action-cell">
+                          <button className="delete-btn" onClick={() => handleDeleteFileLocation(filePath)} title="Delete file">🗑 Delete</button>
+                        </td>
                       </tr>
-                    ))
+                    );
+                    })
                   )}
                 </tbody>
               </table>
@@ -280,23 +410,42 @@ function DuplicateFileFinder() {
             <div className="duplicate-groups">
               {getSortedDuplicates().map((group, index) => {
                 const isExpanded = expandedGroups.has(index);
+                const allSelected = group.locations.every(l => selectedLocations.has(typeof l === 'string' ? l : l.path));
                 return (
                   <div key={index} className="duplicate-group">
-                    <div className="group-header" onClick={() => toggleGroup(index)}>
-                      <div className="header-left">
+                    <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flex: 1 }} onClick={() => toggleGroup(index)}>
                         <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
                         <span className="file-name-badge">📄 {group.name}</span>
+                        <span className="count-badge">{group.count} occurrences</span>
                       </div>
-                      <span className="count-badge">{group.count} occurrences</span>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={() => toggleSelectAllInGroup(group)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ cursor: 'pointer', marginRight: '10px' }}
+                        title="Select all in this group"
+                      />
                     </div>
                     {isExpanded && (
                       <div className="locations">
-                        {group.locations.map((location, locIndex) => (
-                          <div key={locIndex} className="location-item">
+                        {group.locations.map((location, locIndex) => {
+                          const filePath = typeof location === 'string' ? location : location.path;
+                          const isSelected = selectedLocations.has(filePath);
+                          return (
+                          <div key={locIndex} className="location-item" style={{ backgroundColor: isSelected ? '#e3f2fd' : 'transparent' }}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleLocationSelection(filePath)}
+                              style={{ cursor: 'pointer' }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               {showThumbnails && isImageFile(group.name) ? (
                                 <img 
-                                  src={getImagePreviewUrl(typeof location === 'string' ? location : location.path)} 
+                                  src={getImagePreviewUrl(filePath)} 
                                   alt="preview" 
                                   style={{ 
                                     width: '50px', 
@@ -311,7 +460,7 @@ function DuplicateFileFinder() {
                                 <span className="location-icon">📍</span>
                               )}
                               <div className="location-details">
-                                <span className="location-path">{typeof location === 'string' ? location : location.path}</span>
+                                <span className="location-path">{filePath}</span>
                                 {location.size !== undefined && (
                                   <span className="location-stats">
                                     💾 {formatSize(location.size)} | 📅 {formatDate(location.modifiedDate)}
@@ -319,8 +468,12 @@ function DuplicateFileFinder() {
                                 )}
                               </div>
                             </div>
+                            <div className="location-actions">
+                              <button className="delete-btn" onClick={() => handleDeleteFileLocation(filePath)} title="Delete file">🗑 Delete</button>
+                            </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     )}
                   </div>
