@@ -12,6 +12,7 @@ function FolderBrowser() {
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [sortBy, setSortBy] = useState('name'); // 'name', 'fileCount', or 'size'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [selectedFolders, setSelectedFolders] = useState(new Set());
 
   const toggleFolder = (folderPath) => {
     const newExpanded = new Set(expandedFolders);
@@ -111,6 +112,7 @@ function FolderBrowser() {
           <span className="folder-stats">
             {node.fileCount} files • {formatSize(node.size)}
           </span>
+          <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteFolder(node.path); }} title="Delete folder">🗑</button>
         </div>
         {hasChildren && isExpanded && (
           <div className="tree-children">
@@ -159,6 +161,89 @@ function FolderBrowser() {
     }
   };
 
+  const handleDeleteFolder = async (folderPathToDelete) => {
+    const ok = window.confirm(`Delete folder and all contents? ${folderPathToDelete}`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch('http://localhost:3001/api/delete-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: folderPathToDelete }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete folder');
+
+      setFolders(prev => prev.filter(f => f.path !== folderPathToDelete));
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  };
+
+  const toggleFolderSelection = (folderPath) => {
+    const newSelected = new Set(selectedFolders);
+    if (newSelected.has(folderPath)) {
+      newSelected.delete(folderPath);
+    } else {
+      newSelected.add(folderPath);
+    }
+    setSelectedFolders(newSelected);
+  };
+
+  const toggleAllFolders = () => {
+    if (selectedFolders.size === folders.length) {
+      setSelectedFolders(new Set());
+    } else {
+      setSelectedFolders(new Set(folders.map(f => f.path)));
+    }
+  };
+
+  const handleBulkDeleteFolders = async () => {
+    if (selectedFolders.size === 0) {
+      alert('Please select folders to delete');
+      return;
+    }
+
+    const count = selectedFolders.size;
+    const ok = window.confirm(`Delete ${count} folder(s) and all their contents? This action cannot be undone.`);
+    if (!ok) return;
+
+    try {
+      let successCount = 0;
+      let failedCount = 0;
+
+      for (const folderPath of selectedFolders) {
+        try {
+          const res = await fetch('http://localhost:3001/api/delete-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: folderPath }),
+          });
+
+          if (res.ok) {
+            successCount++;
+          } else {
+            failedCount++;
+          }
+        } catch (err) {
+          failedCount++;
+        }
+      }
+
+      setFolders(prev => prev.filter(f => !selectedFolders.has(f.path)));
+      setSelectedFolders(new Set());
+
+      if (failedCount > 0) {
+        alert(`Deleted ${successCount} folder(s). ${failedCount} folder(s) failed.`);
+      } else {
+        alert(`Successfully deleted ${successCount} folder(s)`);
+      }
+    } catch (err) {
+      alert('Bulk delete failed: ' + err.message);
+    }
+  };
+
   return (
     <div className="folder-browser">
       <LoadingTimer isLoading={loading} message="Scanning folders..." />
@@ -194,6 +279,12 @@ function FolderBrowser() {
         <div className="results">
           <div className="results-header">
             <h2>Found {folders.length} folder(s)</h2>
+            {selectedFolders.size > 0 && <p style={{ marginTop: '5px', color: '#666' }}>{selectedFolders.size} selected</p>}
+            {selectedFolders.size > 0 && (
+              <button type="button" onClick={handleBulkDeleteFolders} className="bulk-delete-btn" style={{ backgroundColor: '#dc3545', color: 'white', padding: '8px 16px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+                🗑 Delete Selected ({selectedFolders.size})
+              </button>
+            )}
             <div className="controls-row">
               <div className="sort-controls">
                 <label>Sort by:</label>
@@ -245,6 +336,7 @@ function FolderBrowser() {
             <ul className="folder-list">
               {sortFolders(folders).map((folder, index) => (
                 <li key={index} className="folder-item" style={{ paddingLeft: `${folder.depth * 20 + 16}px` }}>
+                  <input type="checkbox" checked={selectedFolders.has(folder.path)} onChange={() => toggleFolderSelection(folder.path)} style={{ cursor: 'pointer', marginRight: '10px' }} />
                   <span className="folder-icon">📁</span>
                   <div className="folder-info">
                     <div className="folder-name">{folder.name}</div>
@@ -254,6 +346,9 @@ function FolderBrowser() {
                       <span className="meta-item">💾 {formatSize(folder.size)}</span>
                     </div>
                     <div className="folder-path">{folder.path}</div>
+                    <div className="folder-actions">
+                      <button className="delete-btn" onClick={() => handleDeleteFolder(folder.path)} title="Delete folder">🗑 Delete</button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -263,6 +358,9 @@ function FolderBrowser() {
               <table className="folder-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>
+                      <input type="checkbox" checked={selectedFolders.size === folders.length && folders.length > 0} onChange={toggleAllFolders} style={{ cursor: 'pointer' }} />
+                    </th>
                     <th className="sortable-header" onClick={() => handleSort('name')}>
                       Folder Name {getSortIcon('name')}
                     </th>
@@ -273,16 +371,23 @@ function FolderBrowser() {
                       Size {getSortIcon('size')}
                     </th>
                     <th>Full Path</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortFolders(folders).map((folder, index) => {
                     return (
                       <tr key={index} className="table-row">
+                        <td style={{ width: '40px', textAlign: 'center' }}>
+                          <input type="checkbox" checked={selectedFolders.has(folder.path)} onChange={() => toggleFolderSelection(folder.path)} style={{ cursor: 'pointer' }} />
+                        </td>
                         <td className="name-cell">{folder.name}</td>
                         <td className="stats-cell">{folder.fileCount}</td>
                         <td className="stats-cell">{formatSize(folder.size)}</td>
                         <td className="path-cell">{folder.path}</td>
+                        <td className="action-cell">
+                          <button className="delete-btn" onClick={() => handleDeleteFolder(folder.path)} title="Delete folder">🗑 Delete</button>
+                        </td>
                       </tr>
                     );
                   })}

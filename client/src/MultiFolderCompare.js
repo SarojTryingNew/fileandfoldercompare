@@ -19,6 +19,81 @@ function MultiFolderCompare() {
   const [expandedGroups, setExpandedGroups] = useState(new Set());
   const [viewMode, setViewMode] = useState('list');
   const [searchMode, setSearchMode] = useState('perfect');
+  const [selectedLocations, setSelectedLocations] = useState(new Set());
+
+  const toggleLocationSelection = (folderPath) => {
+    const newSelected = new Set(selectedLocations);
+    if (newSelected.has(folderPath)) {
+      newSelected.delete(folderPath);
+    } else {
+      newSelected.add(folderPath);
+    }
+    setSelectedLocations(newSelected);
+  };
+
+  const toggleSelectAllInGroup = (group) => {
+    const groupPaths = group.locations.map(l => l.path);
+    const allSelected = groupPaths.every(path => selectedLocations.has(path));
+    const newSelected = new Set(selectedLocations);
+    
+    groupPaths.forEach(path => {
+      if (allSelected) {
+        newSelected.delete(path);
+      } else {
+        newSelected.add(path);
+      }
+    });
+    setSelectedLocations(newSelected);
+  };
+
+  const handleMultiDelete = async () => {
+    if (selectedLocations.size === 0) {
+      alert('Please select folders to delete');
+      return;
+    }
+    
+    const confirmMsg = `Delete ${selectedLocations.size} selected folder(s) and all contents?`;
+    const ok = window.confirm(confirmMsg);
+    if (!ok) return;
+
+    try {
+      const pathsToDelete = Array.from(selectedLocations);
+      const errors = [];
+
+      for (const folderPath of pathsToDelete) {
+        try {
+          const res = await fetch('http://localhost:3001/api/delete-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: folderPath }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            errors.push(`${folderPath}: ${data.error || 'Failed to delete'}`);
+          }
+        } catch (err) {
+          errors.push(`${folderPath}: ${err.message}`);
+        }
+      }
+
+      setDuplicates(prev => {
+        const updated = prev
+          .map(g => ({ ...g, locations: g.locations.filter(l => !selectedLocations.has(l.path)) }))
+          .filter(g => g.locations.length > 1);
+        return updated;
+      });
+      setSelectedLocations(new Set());
+
+      if (errors.length > 0) {
+        alert(`Errors during deletion:\n${errors.join('\n')}`);
+      } else {
+        alert(`Successfully deleted ${pathsToDelete.length} folder(s)`);
+      }
+    } catch (err) {
+      alert('Delete operation failed: ' + err.message);
+    }
+  };
 
   const toggleGroup = (index) => {
     const newExpanded = new Set(expandedGroups);
@@ -93,6 +168,27 @@ function MultiFolderCompare() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteFolderLocation = async (folderPathToDelete) => {
+    const ok = window.confirm(`Delete folder and all contents? ${folderPathToDelete}`);
+    if (!ok) return;
+
+    try {
+      const res = await fetch('http://localhost:3001/api/delete-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: folderPathToDelete }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete folder');
+
+      setDuplicates(prev => prev.map(g => ({ ...g, locations: g.locations.filter(l => l.path !== folderPathToDelete) })).filter(g => g.locations.length > 1));
+      setTotalDuplicates(prev => Math.max(0, prev - 1));
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
     }
   };
 
@@ -179,6 +275,17 @@ function MultiFolderCompare() {
           </div>
 
           <div className="results-controls">
+            {selectedLocations.size > 0 && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '10px' }}>
+                <span style={{ fontWeight: 'bold' }}>{selectedLocations.size} folder(s) selected</span>
+                <button type="button" className="delete-btn" onClick={handleMultiDelete}>
+                  🗑 Delete Selected
+                </button>
+                <button type="button" className="control-btn" onClick={() => setSelectedLocations(new Set())}>
+                  Clear Selection
+                </button>
+              </div>
+            )}
             <div className="view-selector">
               <button 
                 type="button" 
@@ -212,24 +319,40 @@ function MultiFolderCompare() {
               <table className="folders-table">
                 <thead>
                   <tr>
+                    <th style={{ width: '40px' }}>Select</th>
                     <th>Folder Name</th>
                     <th>Files</th>
                     <th>Size</th>
                     <th>Source</th>
                     <th>Path</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {duplicates.map((group) => 
-                    group.locations.map((location, locIndex) => (
-                      <tr key={`${group.name}-${locIndex}`}>
+                    group.locations.map((location, locIndex) => {
+                      const isSelected = selectedLocations.has(location.path);
+                      return (
+                      <tr key={`${group.name}-${locIndex}`} style={{ backgroundColor: isSelected ? '#e3f2fd' : 'transparent' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleLocationSelection(location.path)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </td>
                         <td className="folder-name-cell">📁 {group.name}</td>
                         <td className="stats-cell">{location.fileCount !== undefined ? location.fileCount : 'N/A'}</td>
                         <td className="stats-cell">{location.size !== undefined ? formatSize(location.size) : 'N/A'}</td>
                         <td className="source-cell">{location.source}</td>
                         <td className="path-cell">{location.path}</td>
+                        <td className="action-cell">
+                          <button className="delete-btn" onClick={() => handleDeleteFolderLocation(location.path)} title="Delete folder">🗑 Delete</button>
+                        </td>
                       </tr>
-                    ))
+                    );
+                    })
                   )}
                 </tbody>
               </table>
@@ -238,19 +361,37 @@ function MultiFolderCompare() {
             <div className="duplicate-groups">
             {duplicates.map((group, index) => {
               const isExpanded = expandedGroups.has(index);
+              const allSelected = group.locations.every(l => selectedLocations.has(l.path));
               return (
                 <div key={index} className="duplicate-group">
-                  <div className="group-header" onClick={() => toggleGroup(index)}>
-                    <div className="header-left">
+                  <div className="group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flex: 1 }} onClick={() => toggleGroup(index)}>
                       <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
                       <span className="folder-name-badge">📁 {group.name}</span>
+                      <span className="count-badge">{group.count} occurrences</span>
                     </div>
-                    <span className="count-badge">{group.count} occurrences</span>
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={() => toggleSelectAllInGroup(group)}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ cursor: 'pointer', marginRight: '10px' }}
+                      title="Select all in this group"
+                    />
                   </div>
                   {isExpanded && (
                     <div className="locations">
-                      {group.locations.map((location, locIndex) => (
-                        <div key={locIndex} className="location-item">
+                      {group.locations.map((location, locIndex) => {
+                        const isSelected = selectedLocations.has(location.path);
+                        return (
+                        <div key={locIndex} className="location-item" style={{ backgroundColor: isSelected ? '#e3f2fd' : 'transparent' }}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleLocationSelection(location.path)}
+                            style={{ cursor: 'pointer' }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
                           <span className="location-icon">📍</span>
                           <div className="location-details">
                             <span className="location-path">{location.path}</span>
@@ -261,8 +402,12 @@ function MultiFolderCompare() {
                               </span>
                             )}
                           </div>
+                          <div className="location-actions">
+                            <button className="delete-btn" onClick={() => handleDeleteFolderLocation(location.path)} title="Delete folder">🗑 Delete</button>
+                          </div>
                         </div>
-                      ))}
+                      );
+                      })}
                     </div>
                   )}
                 </div>

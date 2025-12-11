@@ -1,46 +1,51 @@
 .home {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 40px 20px;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .home-header {
   text-align: center;
-  margin-bottom: 50px;
+  margin-bottom: 30px;
 }
 
 .home-header h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .tagline {
-  font-size: 1.2rem;
+  font-size: 1rem;
   color: #666;
   margin-top: 0;
 }
 
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  flex: 1;
 }
 
 .menu-card {
   background: white;
-  border-radius: 16px;
-  padding: 32px 24px;
+  border-radius: 12px;
+  padding: 24px 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
   border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
 }
 
 .menu-card:not(.disabled):hover {
@@ -60,22 +65,23 @@
 }
 
 .menu-icon {
-  font-size: 3.5rem;
-  margin-bottom: 20px;
+  font-size: 2.8rem;
+  margin-bottom: 12px;
   display: block;
 }
 
 .menu-card h3 {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   color: #333;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .menu-card p {
   color: #666;
-  font-size: 1rem;
-  line-height: 1.5;
-  margin-bottom: 16px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  flex-grow: 1;
 }
 
 .menu-arrow {
@@ -95,34 +101,73 @@
 
 .home-footer {
   text-align: center;
-  padding: 40px 20px;
+  padding: 20px 20px 0;
   color: #999;
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+  .home {
+    padding: 20px 15px;
+  }
+
   .home-header h1 {
     font-size: 2rem;
   }
 
   .tagline {
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
 
   .menu-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
 
   .menu-card {
-    padding: 24px 20px;
+    padding: 20px 16px;
   }
 
   .menu-icon {
-    font-size: 2.5rem;
+    font-size: 2.4rem;
   }
 
   .menu-card h3 {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
+  }
+
+  .menu-card p {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .home-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .tagline {
+    font-size: 0.9rem;
+  }
+
+  .menu-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .menu-card {
+    padding: 18px 14px;
+  }
+
+  .menu-icon {
+    font-size: 2.2rem;
+  }
+
+  .menu-card h3 {
+    font-size: 1rem;
+  }
+
+  .menu-card p {
+    font-size: 0.8rem;
   }
 }
