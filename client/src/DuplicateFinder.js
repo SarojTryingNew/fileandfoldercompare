@@ -187,6 +187,24 @@ function DuplicateFinder() {
     }
   };
 
+  const handleCopyPath = async (path) => {
+    try {
+      if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(path);
+      } else {
+        // Fallback
+        const el = document.createElement('textarea');
+        el.value = path;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+    } catch (err) {
+      // Silent fail
+    }
+  };
+
   return (
     <div className="duplicate-finder">
       <LoadingTimer isLoading={loading} message="Finding duplicates..." />
@@ -343,6 +361,7 @@ function DuplicateFinder() {
                         <td className="stats-cell">{location.size !== undefined ? formatSize(location.size) : 'N/A'}</td>
                         <td className="path-cell">{folderPath}</td>
                         <td className="action-cell">
+                          <button className="control-btn" onClick={() => handleCopyPath(folderPath)} title="Copy path">📋 Copy</button>
                           <button className="delete-btn" onClick={() => handleDeleteFolderLocation(folderPath)} title="Delete folder">🗑 Delete</button>
                         </td>
                       </tr>
@@ -398,6 +417,7 @@ function DuplicateFinder() {
                               )}
                             </div>
                             <div className="location-actions">
+                              <button className="control-btn" onClick={(e) => { e.stopPropagation(); handleCopyPath(folderPath); }} title="Copy path">📋 Copy</button>
                               <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteFolderLocation(folderPath); }} title="Delete folder">🗑 Delete</button>
                             </div>
                           </div>
