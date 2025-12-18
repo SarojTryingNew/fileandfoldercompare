@@ -207,6 +207,37 @@ function DuplicateFileFinder() {
     }
   };
 
+  const handleCopyPath = async (path) => {
+    try {
+      if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(path);
+      } else {
+        // Fallback
+        const el = document.createElement('textarea');
+        el.value = path;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+    } catch (err) {
+      // Silent fail
+    }
+  };
+
+  const getFolderPath = (filePath) => {
+    // Handle both Windows and Unix paths
+    const lastBackslash = filePath.lastIndexOf('\\');
+    const lastSlash = filePath.lastIndexOf('/');
+    const lastSeparator = Math.max(lastBackslash, lastSlash);
+    
+    if (lastSeparator === -1) {
+      return filePath;
+    }
+    
+    return filePath.substring(0, lastSeparator);
+  };
+
   return (
     <div className="duplicate-file-finder">
       <LoadingTimer isLoading={loading} message="Finding duplicate files..." />
@@ -397,6 +428,7 @@ function DuplicateFileFinder() {
                         <td className="date-cell">{location.modifiedDate ? formatDate(location.modifiedDate) : 'N/A'}</td>
                         <td className="path-cell">{filePath}</td>
                         <td className="action-cell">
+                          <button className="control-btn" onClick={() => handleCopyPath(getFolderPath(filePath))} title="Copy folder path">📋 Copy</button>
                           <button className="delete-btn" onClick={() => handleDeleteFileLocation(filePath)} title="Delete file">🗑 Delete</button>
                         </td>
                       </tr>
@@ -469,6 +501,7 @@ function DuplicateFileFinder() {
                               </div>
                             </div>
                             <div className="location-actions">
+                              <button className="control-btn" onClick={() => handleCopyPath(getFolderPath(filePath))} title="Copy folder path">📋 Copy</button>
                               <button className="delete-btn" onClick={() => handleDeleteFileLocation(filePath)} title="Delete file">🗑 Delete</button>
                             </div>
                           </div>
