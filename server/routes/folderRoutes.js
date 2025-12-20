@@ -1,8 +1,12 @@
 const express = require('express');
 const fs = require('fs').promises;
+const path = require('path');
 const router = express.Router();
 const { getAllFolders } = require('../utils/fileSystem');
 const { findDuplicateFolders } = require('../utils/duplicateFinder');
+
+// Path to ignored folders JSON file
+const IGNORED_FOLDERS_FILE = path.join(__dirname, '..', 'data', 'ignoredFolders.json');
 
 // Endpoint to serve image files for preview
 router.get('/api/image-preview', async (req, res) => {
@@ -165,6 +169,45 @@ router.post('/api/compare-folders', async (req, res) => {
   } catch (error) {
     console.error('Error comparing folders:', error);
     res.status(500).json({ error: 'Failed to compare folders', details: error.message });
+  }
+});
+
+// Endpoint to load ignored folders
+router.get('/api/load-ignored-folders', async (req, res) => {
+  try {
+    try {
+      await fs.access(IGNORED_FOLDERS_FILE);
+      const data = await fs.readFile(IGNORED_FOLDERS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      res.json({ ignoredFolders: parsed.ignoredFolders || [] });
+    } catch (error) {
+      // File doesn't exist or is invalid, return empty array
+      res.json({ ignoredFolders: [] });
+    }
+  } catch (error) {
+    console.error('Error loading ignored folders:', error);
+    res.status(500).json({ error: 'Failed to load ignored folders', details: error.message });
+  }
+});
+
+// Endpoint to save ignored folders
+router.post('/api/save-ignored-folders', async (req, res) => {
+  try {
+    const { ignoredFolders } = req.body;
+    
+    // Ensure data directory exists
+    const dataDir = path.dirname(IGNORED_FOLDERS_FILE);
+    try {
+      await fs.access(dataDir);
+    } catch {
+      await fs.mkdir(dataDir, { recursive: true });
+    }
+    
+    await fs.writeFile(IGNORED_FOLDERS_FILE, JSON.stringify({ ignoredFolders }, null, 2));
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving ignored folders:', error);
+    res.status(500).json({ error: 'Failed to save ignored folders', details: error.message });
   }
 });
 

@@ -6,6 +6,8 @@
     "install-all": "cd server && npm install && cd ../client && npm install",
     "start-server": "cd server && npm start",
     "start-client": "cd client && npm start",
+    "ss": "cd server && npm start",
+    "sc": "cd client && npm start",
     "dev-server": "cd server && npm run dev"
   }
 }

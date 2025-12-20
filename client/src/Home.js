@@ -51,6 +51,20 @@ function Home({ onNavigate }) {
           <p>Compare multiple paths to find duplicate file names across them</p>
           <span className="menu-arrow">→</span>
         </div>
+
+        <div className="menu-card" onClick={() => onNavigate('file-organizer')}>
+          <div className="menu-icon">📸🎥📅</div>
+          <h3>Media Organizer</h3>
+          <p>Organize images & videos into year/month/date/Photos|Videos folders</p>
+          <span className="menu-arrow">→</span>
+        </div>
+
+        <div className="menu-card" onClick={() => onNavigate('file-organizer-by-extension')}>
+          <div className="menu-icon">📄📂📅</div>
+          <h3>Document Organizer</h3>
+          <p>Organize documents & files by year and file extension</p>
+          <span className="menu-arrow">→</span>
+        </div>
       </div>
 
       <div className="home-footer">

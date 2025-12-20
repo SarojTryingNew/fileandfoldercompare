@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './DuplicateFinder.css';
 import LoadingTimer from './LoadingTimer';
 
@@ -6,6 +6,52 @@ function DuplicateFinder() {
   const [folderPath, setFolderPath] = useState('');
   const [duplicates, setDuplicates] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [ignoredFolders, setIgnoredFolders] = useState(new Set());
+
+  // Load ignored folders from JSON file on component mount
+  useEffect(() => {
+    loadIgnoredFolders();
+  }, []);
+
+  const loadIgnoredFolders = async () => {
+    try {
+      const response = await fetch('/api/load-ignored-folders');
+      if (response.ok) {
+        const data = await response.json();
+        setIgnoredFolders(new Set(data.ignoredFolders || []));
+      }
+    } catch (error) {
+      console.log('Could not load ignored folders:', error);
+    }
+  };
+
+  const saveIgnoredFolders = async (folders) => {
+    try {
+      await fetch('/api/save-ignored-folders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ignoredFolders: Array.from(folders) }),
+      });
+    } catch (error) {
+      console.log('Could not save ignored folders:', error);
+    }
+  };
+
+  const toggleIgnoreFolder = (folderPath) => {
+    const newIgnored = new Set(ignoredFolders);
+    if (newIgnored.has(folderPath)) {
+      newIgnored.delete(folderPath);
+    } else {
+      newIgnored.add(folderPath);
+    }
+    setIgnoredFolders(newIgnored);
+    saveIgnoredFolders(newIgnored);
+  };
+
+  const clearIgnoredFolders = () => {
+    setIgnoredFolders(new Set());
+    saveIgnoredFolders(new Set());
+  };
 
   const formatSize = (bytes) => {
     if (bytes === 0) return '0 B';
@@ -117,17 +163,24 @@ function DuplicateFinder() {
   };
 
   const getSortedDuplicates = () => {
-    const sorted = [...duplicates];
+    let filtered = duplicates.map(group => ({
+      ...group,
+      locations: group.locations.filter(location => {
+        const folderPath = typeof location === 'string' ? location : location.path;
+        return !ignoredFolders.has(folderPath);
+      })
+    })).filter(group => group.locations.length > 1);
+
     if (sortBy === 'name') {
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === 'size') {
-      sorted.sort((a, b) => {
+      filtered.sort((a, b) => {
         const sizeA = a.locations[0]?.size || 0;
         const sizeB = b.locations[0]?.size || 0;
         return sizeB - sizeA;
       });
     }
-    return sorted;
+    return filtered;
   };
 
   const handleSubmit = async (e) => {
@@ -272,6 +325,14 @@ function DuplicateFinder() {
           </div>
 
           <div className="results-controls">
+            {ignoredFolders.size > 0 && (
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', backgroundColor: '#fff3cd', borderRadius: '4px', marginBottom: '10px', border: '1px solid #ffeaa7' }}>
+                <span style={{ fontWeight: 'bold', color: '#856404' }}>🚫 {ignoredFolders.size} folder(s) ignored</span>
+                <button type="button" className="control-btn" onClick={clearIgnoredFolders} style={{ backgroundColor: '#ffc107', color: '#212529' }}>
+                  Clear Ignored
+                </button>
+              </div>
+            )}
             {selectedLocations.size > 0 && (
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', padding: '10px', backgroundColor: '#f0f0f0', borderRadius: '4px', marginBottom: '10px' }}>
                 <span style={{ fontWeight: 'bold' }}>{selectedLocations.size} folder(s) selected</span>
@@ -362,6 +423,9 @@ function DuplicateFinder() {
                         <td className="path-cell">{folderPath}</td>
                         <td className="action-cell">
                           <button className="control-btn" onClick={() => handleCopyPath(folderPath)} title="Copy path">📋 Copy</button>
+                          <button className="control-btn" onClick={() => toggleIgnoreFolder(folderPath)} title={ignoredFolders.has(folderPath) ? "Unignore folder" : "Ignore folder"}>
+                            {ignoredFolders.has(folderPath) ? '👁️ Unignore' : '🚫 Ignore'}
+                          </button>
                           <button className="delete-btn" onClick={() => handleDeleteFolderLocation(folderPath)} title="Delete folder">🗑 Delete</button>
                         </td>
                       </tr>
@@ -418,6 +482,9 @@ function DuplicateFinder() {
                             </div>
                             <div className="location-actions">
                               <button className="control-btn" onClick={(e) => { e.stopPropagation(); handleCopyPath(folderPath); }} title="Copy path">📋 Copy</button>
+                              <button className="control-btn" onClick={(e) => { e.stopPropagation(); toggleIgnoreFolder(folderPath); }} title={ignoredFolders.has(folderPath) ? "Unignore folder" : "Ignore folder"}>
+                                {ignoredFolders.has(folderPath) ? '👁️ Unignore' : '🚫 Ignore'}
+                              </button>
                               <button className="delete-btn" onClick={(e) => { e.stopPropagation(); handleDeleteFolderLocation(folderPath); }} title="Delete folder">🗑 Delete</button>
                             </div>
                           </div>
