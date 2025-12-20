@@ -7,6 +7,8 @@ import MultiFolderCompare from './MultiFolderCompare';
 import FileBrowser from './FileBrowser';
 import DuplicateFileFinder from './DuplicateFileFinder';
 import MultiFileCompare from './MultiFileCompare';
+import FileOrganizer from './FileOrganizer';
+import FileOrganizerByExtension from './FileOrganizerByExtension';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
@@ -36,6 +38,8 @@ function App() {
         {currentPage === 'file-browser' && <FileBrowser />}
         {currentPage === 'duplicate-file-finder' && <DuplicateFileFinder />}
         {currentPage === 'multi-file-compare' && <MultiFileCompare />}
+        {currentPage === 'file-organizer' && <FileOrganizer />}
+        {currentPage === 'file-organizer-by-extension' && <FileOrganizerByExtension />}
       </div>
     </div>
   );
