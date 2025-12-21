@@ -5,6 +5,7 @@ import LoadingTimer from './LoadingTimer';
 function FileOrganizer() {
   const [sourcePath, setSourcePath] = useState('');
   const [targetPath, setTargetPath] = useState('D:\\Saroj\\Memories\\Organized');
+  const [dateField, setDateField] = useState('date');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
@@ -21,7 +22,7 @@ function FileOrganizer() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ sourcePath, targetPath }),
+        body: JSON.stringify({ sourcePath, targetPath, dateField }),
       });
 
       const data = await response.json();
@@ -71,6 +72,21 @@ function FileOrganizer() {
             required
           />
           <small className="input-help">Files will be organized into year/MonthName/DD-MM-YYYY/Photos|Videos folders</small>
+        </div>
+
+        <div className="input-group">
+          <label htmlFor="dateField">Date Field to Use:</label>
+          <select
+            id="dateField"
+            value={dateField}
+            onChange={(e) => setDateField(e.target.value)}
+            className="date-select"
+          >
+            <option value="modifiedDate">Date Modified</option>
+            <option value="createdDate">Date Created</option>
+            <option value="date">Date</option>
+          </select>
+          <small className="input-help">Select which date field to use for organizing files</small>
         </div>
 
         <button type="submit" disabled={loading || !sourcePath || !targetPath}>

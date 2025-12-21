@@ -1,5 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
+const exifr = require('exifr');
 
 // Recursive function to get all folders and subfolders
 async function getAllFolders(dirPath, depth = 0, maxDepth = 10) {
@@ -103,13 +104,37 @@ async function getAllFiles(dirPath, depth = 0, maxDepth = 10) {
       try {
         if (item.isFile()) {
           const stats = await fs.stat(fullPath);
-          results.push({
+          const extension = path.extname(item.name).toLowerCase();
+
+          // Base metadata
+          const fileInfo = {
             name: item.name,
             path: fullPath,
             size: stats.size,
-            extension: path.extname(item.name),
-            modifiedDate: stats.mtime
-          });
+            extension,
+            modifiedDate: stats.mtime,
+            createdDate: stats.birthtime,
+            date: null
+          };
+
+          // Try to read EXIF date for images/videos when user selects "Date"
+          // This maps to DateTimeOriginal or CreateDate if available.
+          try {
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.tiff', '.tif', '.heic'];
+            if (imageExtensions.includes(extension)) {
+              const exif = await exifr.parse(fullPath, { tiff: true, ifd0: true, exif: true });
+              const dateExif = exif?.DateTimeOriginal || exif?.CreateDate || exif?.ModifyDate;
+              if (dateExif) {
+                fileInfo.date = dateExif;
+              }
+            }
+          } catch (err) {
+            // If EXIF parse fails, leave date null
+          }
+
+          // Keep date as null if no EXIF found - don't fallback to other dates
+
+          results.push(fileInfo);
         } else if (item.isDirectory()) {
           const subFiles = await getAllFiles(fullPath, depth + 1, maxDepth);
           results.push(...subFiles);
